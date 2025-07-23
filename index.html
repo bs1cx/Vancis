@@ -1,0 +1,1037 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Vancis - Kanada KOBİ'leri için Fatura Otomasyonu</title>
+    <script src="https://unpkg.com/pdf-lib@1.17.1/dist/pdf-lib.min.js"></script>
+    <script src="https://unpkg.com/@pdf-lib/fontkit@1.1.1/dist/fontkit.umd.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+    <style>
+        :root {
+            --primary: #003366;
+            --secondary: #E63946;
+            --light: #F1FAEE;
+            --dark: #1D3557;
+            --success: #2A9D8F;
+        }
+        
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        
+        body {
+            background-color: #f8f9fa;
+            color: #333;
+            line-height: 1.6;
+            padding: 20px;
+            max-width: 1200px;
+            margin: 0 auto;
+            background: linear-gradient(135deg, #f5f7fa 0%, #e4edf5 100%);
+        }
+        
+        header {
+            background: linear-gradient(135deg, var(--primary), var(--dark));
+            color: white;
+            padding: 25px;
+            border-radius: 10px;
+            margin-bottom: 30px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+            position: relative;
+            overflow: hidden;
+        }
+        
+        header::before {
+            content: "";
+            position: absolute;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: radial-gradient(circle, rgba(255,255,255,0.1) 0%, rgba(255,255,255,0) 70%);
+            transform: rotate(30deg);
+        }
+        
+        header h1 {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+            position: relative;
+        }
+        
+        header h1 svg {
+            margin-right: 15px;
+            filter: drop-shadow(0 0 5px rgba(0,0,0,0.3));
+        }
+        
+        header p {
+            font-size: 1.1rem;
+            max-width: 800px;
+            opacity: 0.9;
+            position: relative;
+        }
+        
+        .container {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 30px;
+            margin-bottom: 30px;
+        }
+        
+        @media (max-width: 768px) {
+            .container {
+                grid-template-columns: 1fr;
+            }
+        }
+        
+        .card {
+            background: white;
+            border-radius: 10px;
+            padding: 25px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.05);
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .card::before {
+            content: "";
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 5px;
+            height: 100%;
+            background: var(--primary);
+        }
+        
+        .card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 6px 20px rgba(0, 0, 0, 0.1);
+        }
+        
+        .card h2 {
+            color: var(--primary);
+            margin-bottom: 20px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid var(--secondary);
+            display: flex;
+            align-items: center;
+        }
+        
+        .card h2 svg {
+            margin-right: 10px;
+        }
+        
+        .form-group {
+            margin-bottom: 20px;
+        }
+        
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: var(--dark);
+        }
+        
+        .form-group input, 
+        .form-group select, 
+        .form-group textarea {
+            width: 100%;
+            padding: 12px 15px;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            font-size: 16px;
+            transition: border-color 0.3s;
+        }
+        
+        .form-group input:focus, 
+        .form-group select:focus, 
+        .form-group textarea:focus {
+            border-color: var(--primary);
+            outline: none;
+            box-shadow: 0 0 0 3px rgba(0, 51, 102, 0.1);
+        }
+        
+        .items-container {
+            border: 1px solid #eee;
+            border-radius: 6px;
+            padding: 15px;
+            margin-bottom: 20px;
+            background-color: #fafafa;
+        }
+        
+        .item {
+            padding: 15px;
+            border-bottom: 1px solid #eee;
+            margin-bottom: 15px;
+            background-color: white;
+            border-radius: 6px;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.03);
+            position: relative;
+        }
+        
+        .item:last-child {
+            border-bottom: none;
+            margin-bottom: 0;
+        }
+        
+        .btn {
+            background-color: var(--primary);
+            color: white;
+            border: none;
+            padding: 12px 25px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: 600;
+            transition: all 0.3s;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 3px 5px rgba(0, 0, 0, 0.1);
+        }
+        
+        .btn:hover {
+            background-color: #002244;
+            transform: translateY(-2px);
+            box-shadow: 0 5px 10px rgba(0, 0, 0, 0.15);
+        }
+        
+        .btn-secondary {
+            background-color: var(--secondary);
+        }
+        
+        .btn-secondary:hover {
+            background-color: #c1121f;
+        }
+        
+        .btn-success {
+            background-color: var(--success);
+        }
+        
+        .btn-success:hover {
+            background-color: #218c7d;
+        }
+        
+        .btn-small {
+            padding: 8px 15px;
+            font-size: 14px;
+        }
+        
+        .actions {
+            display: flex;
+            gap: 15px;
+            margin-top: 30px;
+            flex-wrap: wrap;
+        }
+        
+        .invoice-preview {
+            background-color: white;
+            border: 1px solid #eee;
+            border-radius: 6px;
+            padding: 25px;
+            min-height: 400px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100" viewBox="0 0 100 100"><rect width="100" height="100" fill="white"/><text x="50%" y="50%" font-size="12" text-anchor="middle" fill="rgba(0,0,0,0.03)" dy=".3em">VANCIS</text></svg>');
+            background-size: 150px;
+        }
+        
+        .invoice-preview-content {
+            width: 100%;
+            max-width: 500px;
+            background-color: white;
+            padding: 30px;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.05);
+            border-top: 4px solid var(--primary);
+        }
+        
+        .invoice-header {
+            text-align: center;
+            margin-bottom: 30px;
+            padding-bottom: 20px;
+            border-bottom: 2px solid var(--primary);
+        }
+        
+        .invoice-header h3 {
+            font-size: 24px;
+            color: var(--primary);
+            margin-bottom: 5px;
+        }
+        
+        .invoice-header p {
+            color: #666;
+        }
+        
+        .invoice-details {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 30px;
+        }
+        
+        .invoice-details div {
+            flex: 1;
+        }
+        
+        .invoice-details div:first-child {
+            margin-right: 20px;
+        }
+        
+        .invoice-items {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 30px;
+        }
+        
+        .invoice-items th {
+            background-color: #f1f1f1;
+            padding: 10px;
+            text-align: left;
+            font-weight: 600;
+        }
+        
+        .invoice-items td {
+            padding: 10px;
+            border-bottom: 1px solid #eee;
+        }
+        
+        .invoice-totals {
+            text-align: right;
+        }
+        
+        .invoice-totals div {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 10px;
+        }
+        
+        .invoice-totals .total {
+            font-weight: bold;
+            font-size: 18px;
+            color: var(--primary);
+            margin-top: 10px;
+            padding-top: 10px;
+            border-top: 2px solid #eee;
+        }
+        
+        footer {
+            text-align: center;
+            margin-top: 40px;
+            padding: 20px;
+            color: #666;
+            font-size: 14px;
+            border-top: 1px solid #eee;
+        }
+        
+        .notification {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            padding: 15px 25px;
+            border-radius: 6px;
+            background-color: var(--success);
+            color: white;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+            z-index: 1000;
+            display: flex;
+            align-items: center;
+            transform: translateX(200%);
+            transition: transform 0.3s ease;
+        }
+        
+        .notification.show {
+            transform: translateX(0);
+        }
+        
+        .notification svg {
+            margin-right: 10px;
+        }
+        
+        .steps {
+            display: flex;
+            margin-bottom: 30px;
+            overflow-x: auto;
+            background: white;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+        }
+        
+        .step {
+            flex: 1;
+            text-align: center;
+            padding: 15px;
+            background-color: #f1f1f1;
+            border-top: 3px solid #ddd;
+            font-weight: 500;
+            min-width: 150px;
+            position: relative;
+            transition: all 0.3s;
+        }
+        
+        .step:not(:last-child)::after {
+            content: "";
+            position: absolute;
+            right: 0;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 0;
+            height: 0;
+            border-top: 10px solid transparent;
+            border-bottom: 10px solid transparent;
+            border-left: 10px solid white;
+            z-index: 1;
+        }
+        
+        .step.active {
+            background-color: var(--primary);
+            color: white;
+            border-top: 3px solid var(--secondary);
+        }
+        
+        .step.done {
+            background-color: var(--success);
+            color: white;
+            border-top: 3px solid #218c7d;
+        }
+        
+        .step.done::before {
+            content: '✓';
+            margin-right: 5px;
+        }
+        
+        .logo {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 15px;
+        }
+        
+        .logo-circle {
+            width: 50px;
+            height: 50px;
+            background: var(--primary);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: bold;
+            font-size: 20px;
+            margin-right: 15px;
+        }
+        
+        .logo-text {
+            font-size: 24px;
+            font-weight: bold;
+            color: var(--primary);
+        }
+    </style>
+</head>
+<body>
+    <div class="logo">
+        <div class="logo-circle">V</div>
+        <div class="logo-text">VANCIS</div>
+    </div>
+    
+    <header>
+        <h1>
+            <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path>
+                <polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline>
+                <line x1="12" y1="22.08" x2="12" y2="12"></line>
+            </svg>
+            Kanada KOBİ'leri için Fatura Otomasyonu
+        </h1>
+        <p>GST/PST hesaplamaları, çok dilli faturalar ve Kanada vergi uyumu ile profesyonel faturalar oluşturun</p>
+    </header>
+    
+    <div class="steps">
+        <div class="step active">1. Fatura Bilgileri</div>
+        <div class="step">2. Ürün/Hizmetler</div>
+        <div class="step">3. Vergiler</div>
+        <div class="step">4. Önizleme & İndir</div>
+    </div>
+    
+    <div class="container">
+        <div class="card">
+            <h2>
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+                    <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+                </svg>
+                Fatura Bilgileri
+            </h2>
+            
+            <div class="form-group">
+                <label for="invoiceNumber">Fatura Numarası</label>
+                <input type="text" id="invoiceNumber" value="INV-2024-001">
+            </div>
+            
+            <div class="form-group">
+                <label for="invoiceDate">Fatura Tarihi</label>
+                <input type="date" id="invoiceDate" value="">
+            </div>
+            
+            <div class="form-group">
+                <label for="dueDate">Son Ödeme Tarihi</label>
+                <input type="date" id="dueDate" value="">
+            </div>
+            
+            <div class="form-group">
+                <label for="businessName">İşletme Adı</label>
+                <input type="text" id="businessName" value="Vancis Teknolojileri">
+            </div>
+            
+            <div class="form-group">
+                <label for="businessAddress">İşletme Adresi</label>
+                <textarea id="businessAddress" rows="3">123 Teknoloji Sokağı, Vancouver, BC V6B 1J9, Kanada</textarea>
+            </div>
+            
+            <div class="form-group">
+                <label for="customerName">Müşteri Adı</label>
+                <input type="text" id="customerName" value="Sahil Lokantası">
+            </div>
+            
+            <div class="form-group">
+                <label for="customerAddress">Müşteri Adresi</label>
+                <textarea id="customerAddress" rows="3">456 Okyanus Cd, Vancouver, BC V6C 2T8, Kanada</textarea>
+            </div>
+            
+            <div class="form-group">
+                <label for="province">Eyalet</label>
+                <select id="province">
+                    <option value="BC" selected>British Columbia (GST 5% + PST 7%)</option>
+                    <option value="AB">Alberta (GST 5%)</option>
+                    <option value="ON">Ontario (HST 13%)</option>
+                    <option value="MB">Manitoba (GST 5% + PST 7%)</option>
+                    <option value="SK">Saskatchewan (GST 5% + PST 6%)</option>
+                    <option value="QC">Quebec (GST 5% + QST 9.975%)</option>
+                </select>
+            </div>
+        </div>
+        
+        <div class="card">
+            <h2>
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <circle cx="9" cy="21" r="1"></circle>
+                    <circle cx="20" cy="21" r="1"></circle>
+                    <path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"></path>
+                </svg>
+                Ürün/Hizmetler
+            </h2>
+            
+            <div class="items-container" id="items-container">
+                <div class="item">
+                    <div class="form-group">
+                        <label>Ürün/Hizmet Açıklaması</label>
+                        <input type="text" class="item-desc" value="Özel Harman Kahve Çekirdeği">
+                    </div>
+                    
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+                        <div class="form-group">
+                            <label>Adet</label>
+                            <input type="number" class="item-qty" value="50">
+                        </div>
+                        
+                        <div class="form-group">
+                            <label>Birim Fiyat (CAD)</label>
+                            <input type="number" class="item-price" value="4.99" step="0.01">
+                        </div>
+                    </div>
+                    
+                    <button class="btn btn-secondary btn-small remove-item">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <polyline points="3 6 5 6 21 6"></polyline>
+                            <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                            <line x1="10" y1="11" x2="10" y2="17"></line>
+                            <line x1="14" y1="11" x2="14" y2="17"></line>
+                        </svg>
+                        Ürünü Kaldır
+                    </button>
+                </div>
+            </div>
+            
+            <button class="btn btn-secondary" id="add-item">
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <line x1="12" y1="5" x2="12" y2="19"></line>
+                    <line x1="5" y1="12" x2="19" y2="12"></line>
+                </svg>
+                Yeni Ürün Ekle
+            </button>
+        </div>
+        
+        <div class="card">
+            <h2>
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <line x1="12" y1="1" x2="12" y2="23"></line>
+                    <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path>
+                </svg>
+                Vergi & Ödeme Bilgileri
+            </h2>
+            
+            <div class="form-group">
+                <label for="gstNumber">GST/HST Numarası</label>
+                <input type="text" id="gstNumber" value="123456789 RT 0001">
+            </div>
+            
+            <div class="form-group">
+                <label for="currency">Para Birimi</label>
+                <select id="currency">
+                    <option value="CAD" selected>Kanada Doları (CAD)</option>
+                    <option value="USD">Amerikan Doları (USD)</option>
+                    <option value="EUR">Euro (EUR)</option>
+                </select>
+            </div>
+            
+            <div class="form-group">
+                <label for="paymentTerms">Ödeme Koşulları</label>
+                <select id="paymentTerms">
+                    <option value="0" selected>Peşin</option>
+                    <option value="7">7 Gün</option>
+                    <option value="15">15 Gün</option>
+                    <option value="30">30 Gün</option>
+                    <option value="60">60 Gün</option>
+                </select>
+            </div>
+            
+            <div class="form-group">
+                <label for="paymentInstructions">Ödeme Talimatları</label>
+                <textarea id="paymentInstructions" rows="3">Lütfen ödemeyi aşağıdaki banka hesabına yapınız:
+Banka: Royal Bank of Canada
+Hesap Adı: Vancis Teknolojileri A.Ş.
+Hesap No: 1234567
+Şube Kodu: 00300
+IBAN: CA02 RBC 00300 1234567</textarea>
+            </div>
+            
+            <div class="form-group">
+                <label for="notes">Notlar</label>
+                <textarea id="notes" rows="3">Teşekkür ederiz! Tüm ödemeler Kanada doları (CAD) cinsindendir.</textarea>
+            </div>
+        </div>
+        
+        <div class="card">
+            <h2>
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+                    <line x1="3" y1="9" x2="21" y2="9"></line>
+                    <line x1="9" y1="21" x2="9" y2="9"></line>
+                </svg>
+                Fatura Önizleme
+            </h2>
+            
+            <div class="invoice-preview">
+                <div class="invoice-preview-content">
+                    <div class="invoice-header">
+                        <h3>FATURA</h3>
+                        <p id="previewInvoiceNumber">INV-2024-001</p>
+                    </div>
+                    
+                    <div class="invoice-details">
+                        <div>
+                            <p><strong>Gönderen:</strong></p>
+                            <p id="previewBusinessName">Vancis Teknolojileri</p>
+                            <p id="previewBusinessAddress">123 Teknoloji Sokağı, Vancouver, BC V6B 1J9, Kanada</p>
+                        </div>
+                        
+                        <div>
+                            <p><strong>Alıcı:</strong></p>
+                            <p id="previewCustomerName">Sahil Lokantası</p>
+                            <p id="previewCustomerAddress">456 Okyanus Cd, Vancouver, BC V6C 2T8, Kanada</p>
+                        </div>
+                    </div>
+                    
+                    <table class="invoice-items">
+                        <thead>
+                            <tr>
+                                <th>Açıklama</th>
+                                <th>Adet</th>
+                                <th>Fiyat</th>
+                                <th>Tutar</th>
+                            </tr>
+                        </thead>
+                        <tbody id="previewItems">
+                        </tbody>
+                    </table>
+                    
+                    <div class="invoice-totals">
+                        <div>
+                            <span>Ara Toplam:</span>
+                            <span id="previewSubtotal"></span>
+                        </div>
+                        <div>
+                            <span>GST (5%):</span>
+                            <span id="previewGst"></span>
+                        </div>
+                        <div>
+                            <span>PST (7%):</span>
+                            <span id="previewPst"></span>
+                        </div>
+                        <div class="total">
+                            <span>TOPLAM:</span>
+                            <span id="previewTotal"></span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="actions">
+        <button class="btn btn-secondary" id="saveDraft">
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path>
+                <polyline points="17 21 17 13 7 13 7 21"></polyline>
+                <polyline points="7 3 7 8 15 8"></polyline>
+            </svg>
+            Taslak Olarak Kaydet
+        </button>
+        
+        <button class="btn" id="previewInvoice">
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                <circle cx="12" cy="12" r="3"></circle>
+            </svg>
+            Önizleme Yenile
+        </button>
+        
+        <button class="btn btn-success" id="generateInvoice">
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                <polyline points="7 10 12 15 17 10"></polyline>
+                <line x1="12" y1="15" x2="12" y2="3"></line>
+            </svg>
+            Fatura Oluştur ve İndir
+        </button>
+    </div>
+    
+    <div id="notification" class="notification">
+        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
+            <polyline points="22 4 12 14.01 9 11.01"></polyline>
+        </svg>
+        <span>Faturanız başarıyla oluşturuldu!</span>
+    </div>
+    
+    <footer>
+        <p>© 2024 Vancis Technologies - Kanada KOBİ'leri için Vergi Otomasyon Çözümleri</p>
+        <p>GST/HST No: 123456789 RT 0001 | Vancouver, BC, Canada</p>
+    </footer>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const today = new Date();
+            const dueDate = new Date();
+            dueDate.setDate(today.getDate() + 30);
+            
+            document.getElementById('invoiceDate').value = today.toISOString().split('T')[0];
+            document.getElementById('dueDate').value = dueDate.toISOString().split('T')[0];
+            
+            setupEventListeners();
+            updatePreview();
+        });
+        
+        function setupEventListeners() {
+            document.querySelectorAll('input, select, textarea').forEach(input => {
+                input.addEventListener('input', updatePreview);
+            });
+            document.getElementById('add-item').addEventListener('click', addNewItem);
+            document.querySelectorAll('.remove-item').forEach(button => {
+                button.addEventListener('click', function() {
+                    this.closest('.item').remove();
+                    updatePreview();
+                });
+            });
+            document.getElementById('previewInvoice').addEventListener('click', updatePreview);
+            document.getElementById('generateInvoice').addEventListener('click', generateInvoice);
+            document.getElementById('saveDraft').addEventListener('click', saveDraft);
+        }
+
+        function addNewItem() {
+            const container = document.getElementById('items-container');
+            const newItem = document.createElement('div');
+            newItem.className = 'item';
+            newItem.innerHTML = `
+                <div class="form-group">
+                    <label>Ürün/Hizmet Açıklaması</label>
+                    <input type="text" class="item-desc" placeholder="Ürün/hizmet adı">
+                </div>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+                    <div class="form-group">
+                        <label>Adet</label>
+                        <input type="number" class="item-qty" value="1">
+                    </div>
+                    <div class="form-group">
+                        <label>Birim Fiyat (CAD)</label>
+                        <input type="number" class="item-price" value="0.00" step="0.01">
+                    </div>
+                </div>
+                <button class="btn btn-secondary btn-small remove-item">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <polyline points="3 6 5 6 21 6"></polyline>
+                        <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                    </svg>
+                    Ürünü Kaldır
+                </button>
+            `;
+            container.appendChild(newItem);
+            
+            newItem.querySelector('.remove-item').addEventListener('click', function() {
+                newItem.remove();
+                updatePreview();
+            });
+            newItem.querySelectorAll('input').forEach(input => {
+                input.addEventListener('input', updatePreview);
+            });
+            updatePreview();
+        }
+
+        function getTaxRates(province) {
+            const rates = { gst: 0.05, pst: 0, hst: 0 };
+            switch (province) {
+                case 'ON': rates.gst = 0; rates.hst = 0.13; break;
+                case 'BC': case 'MB': rates.pst = 0.07; break;
+                case 'SK': rates.pst = 0.06; break;
+                case 'QC': rates.pst = 0.09975; break;
+            }
+            return rates;
+        }
+
+        function updatePreview() {
+            document.getElementById('previewInvoiceNumber').textContent = document.getElementById('invoiceNumber').value;
+            document.getElementById('previewBusinessName').textContent = document.getElementById('businessName').value;
+            document.getElementById('previewBusinessAddress').textContent = document.getElementById('businessAddress').value;
+            document.getElementById('previewCustomerName').textContent = document.getElementById('customerName').value;
+            document.getElementById('previewCustomerAddress').textContent = document.getElementById('customerAddress').value;
+            
+            const itemsContainer = document.getElementById('previewItems');
+            itemsContainer.innerHTML = '';
+            let subtotal = 0;
+            document.querySelectorAll('.item').forEach(item => {
+                const desc = item.querySelector('.item-desc').value || 'Ürün/hizmet';
+                const qty = parseFloat(item.querySelector('.item-qty').value) || 0;
+                const price = parseFloat(item.querySelector('.item-price').value) || 0;
+                const total = qty * price;
+                subtotal += total;
+                itemsContainer.innerHTML += `<tr><td>${desc}</td><td>${qty}</td><td>$${price.toFixed(2)}</td><td>$${total.toFixed(2)}</td></tr>`;
+            });
+            
+            const province = document.getElementById('province').value;
+            const taxRates = getTaxRates(province);
+            const gst = subtotal * taxRates.gst;
+            const pst = subtotal * taxRates.pst;
+            const hst = subtotal * taxRates.hst;
+            let grandTotal = subtotal + gst + pst + hst;
+            
+            document.getElementById('previewSubtotal').textContent = '$' + subtotal.toFixed(2);
+            
+            const gstRow = document.getElementById('previewGst').parentElement;
+            const pstRow = document.getElementById('previewPst').parentElement;
+
+            if (taxRates.hst > 0) {
+                gstRow.style.display = 'none';
+                pstRow.style.display = 'flex';
+                pstRow.children[0].textContent = `HST (${(taxRates.hst * 100).toFixed(3)}%):`;
+                pstRow.children[1].textContent = '$' + hst.toFixed(2);
+            } else {
+                gstRow.style.display = taxRates.gst > 0 ? 'flex' : 'none';
+                if (taxRates.gst > 0) {
+                    gstRow.children[0].textContent = `GST (${(taxRates.gst * 100)}%):`;
+                    gstRow.children[1].textContent = '$' + gst.toFixed(2);
+                }
+                pstRow.style.display = taxRates.pst > 0 ? 'flex' : 'none';
+                if (taxRates.pst > 0) {
+                    const taxName = province === 'QC' ? 'QST' : 'PST';
+                    const taxRate = (taxRates.pst * 100).toFixed(3).replace(/\.?0+$/, "");
+                    pstRow.children[0].textContent = `${taxName} (${taxRate}%):`;
+                    pstRow.children[1].textContent = '$' + pst.toFixed(2);
+                }
+            }
+            
+            document.getElementById('previewTotal').textContent = '$' + grandTotal.toFixed(2);
+        }
+
+        async function generateInvoice() {
+            const generateButton = document.getElementById('generateInvoice');
+            generateButton.disabled = true;
+            showNotification('Fatura oluşturuluyor, lütfen bekleyin...', false);
+            
+            try {
+                const fontUrl = 'https://cdn.jsdelivr.net/npm/roboto-font@0.1.0/fonts/Roboto/roboto-regular-webfont.ttf';
+                const fontBoldUrl = 'https://cdn.jsdelivr.net/npm/roboto-font@0.1.0/fonts/Roboto/roboto-bold-webfont.ttf';
+                
+                const [fontBytes, fontBoldBytes] = await Promise.all([
+                    fetch(fontUrl).then(res => res.arrayBuffer()),
+                    fetch(fontBoldUrl).then(res => res.arrayBuffer())
+                ]);
+
+                const { PDFDocument, rgb } = PDFLib;
+
+                // --- YENİ EKLENEN SATIR: fontkit'i pdf-lib'e tanıtma ---
+                PDFDocument.registerFontkit(fontkit);
+
+                const pdfDoc = await PDFDocument.create();
+                
+                const customFont = await pdfDoc.embedFont(fontBytes);
+                const customBoldFont = await pdfDoc.embedFont(fontBoldBytes);
+
+                const page = pdfDoc.addPage([595, 842]);
+                const { width, height } = page.getSize();
+                
+                const invoiceData = {
+                    number: document.getElementById('invoiceNumber').value, date: document.getElementById('invoiceDate').value, dueDate: document.getElementById('dueDate').value,
+                    businessName: document.getElementById('businessName').value, businessAddress: document.getElementById('businessAddress').value,
+                    customerName: document.getElementById('customerName').value, customerAddress: document.getElementById('customerAddress').value,
+                    province: document.getElementById('province').value, gstNumber: document.getElementById('gstNumber').value,
+                    paymentInstructions: document.getElementById('paymentInstructions').value, notes: document.getElementById('notes').value,
+                    items: Array.from(document.querySelectorAll('.item')).map(item => ({
+                        description: item.querySelector('.item-desc').value,
+                        quantity: parseFloat(item.querySelector('.item-qty').value) || 0,
+                        price: parseFloat(item.querySelector('.item-price').value) || 0
+                    }))
+                };
+                const taxRates = getTaxRates(invoiceData.province);
+
+                // PDF içeriği oluşturma (önceki kodla aynı, sadece font isimleri değişti)
+                let yPos = height - 50;
+
+                page.drawText('FATURA', { x: 50, y: yPos, font: customBoldFont, size: 24, color: rgb(0, 0.2, 0.4) });
+                yPos -= 30;
+                page.drawText(invoiceData.number, { x: 50, y: yPos, font: customFont, size: 14 });
+
+                const formatDate = (dateStr) => dateStr.replace(/-/g, '/');
+                page.drawText(`Fatura Tarihi: ${formatDate(invoiceData.date)}`, { x: width - 200, y: yPos + 15, font: customFont, size: 10 });
+                page.drawText(`Son Ödeme Tarihi: ${formatDate(invoiceData.dueDate)}`, { x: width - 200, y: yPos, font: customFont, size: 10 });
+                yPos -= 50;
+                
+                const drawAddress = (title, name, address, x, y) => {
+                    page.drawText(title, { x, y, font: customBoldFont, size: 10, color: rgb(0.5, 0.5, 0.5) }); y -= 15;
+                    page.drawText(name, { x, y, font: customBoldFont, size: 12 }); y -= 15;
+                    address.split('\n').forEach(line => {
+                        page.drawText(line, { x, y, font: customFont, size: 10 }); y -= 15;
+                    });
+                }
+                drawAddress('Gönderen', invoiceData.businessName, invoiceData.businessAddress, 50, yPos);
+                drawAddress('Alıcı', invoiceData.customerName, invoiceData.customerAddress, width / 2 + 30, yPos);
+                yPos -= 120;
+                
+                const tableTop = yPos; const tableHeadY = tableTop + 10;
+                page.drawRectangle({ x: 50, y: tableTop - 5, width: width - 100, height: 25, color: rgb(0.9, 0.9, 0.9) });
+                page.drawText('Açıklama', { x: 60, y: tableHeadY, font: customBoldFont, size: 12 });
+                page.drawText('Adet', { x: 300, y: tableHeadY, font: customBoldFont, size: 12 });
+                page.drawText('Fiyat', { x: 380, y: tableHeadY, font: customBoldFont, size: 12 });
+                page.drawText('Tutar', { x: 480, y: tableHeadY, font: customBoldFont, size: 12 });
+                yPos -= 25;
+
+                let subtotal = 0;
+                invoiceData.items.forEach((item, i) => {
+                    if (i % 2 === 1) page.drawRectangle({ x: 50, y: yPos-5, width: width - 100, height: 20, color: rgb(0.95, 0.95, 0.95) });
+                    const total = item.quantity * item.price; subtotal += total;
+                    page.drawText(item.description, { x: 60, y: yPos, font: customFont, size: 10 });
+                    page.drawText(item.quantity.toString(), { x: 300, y: yPos, font: customFont, size: 10 });
+                    page.drawText('$' + item.price.toFixed(2), { x: 380, y: yPos, font: customFont, size: 10 });
+                    page.drawText('$' + total.toFixed(2), { x: 480, y: yPos, font: customFont, size: 10 });
+                    yPos -= 20;
+                });
+                
+                yPos -= 10;
+                let grandTotal = subtotal;
+
+                const drawTotalLine = (label, value, isBold = false) => {
+                    page.drawText(label, { x: 380, y: yPos, font: isBold ? customBoldFont : customFont, size: 11 });
+                    page.drawText('$' + value.toFixed(2), { x: 480, y: yPos, font: isBold ? customBoldFont : customFont, size: 11 });
+                    yPos -= 20;
+                };
+
+                drawTotalLine('Ara Toplam:', subtotal);
+
+                if (taxRates.hst > 0) {
+                    const hst = subtotal * taxRates.hst; grandTotal += hst;
+                    drawTotalLine(`HST (${(taxRates.hst * 100).toFixed(3)}%):`, hst);
+                } else {
+                    if (taxRates.gst > 0) {
+                        const gst = subtotal * taxRates.gst; grandTotal += gst;
+                        drawTotalLine(`GST (${(taxRates.gst * 100)}%):`, gst);
+                    }
+                    if (taxRates.pst > 0) {
+                        const pst = subtotal * taxRates.pst; grandTotal += pst;
+                        const taxName = invoiceData.province === 'QC' ? 'QST' : 'PST';
+                        const taxRate = (taxRates.pst * 100).toFixed(3).replace(/\.?0+$/, "");
+                        drawTotalLine(`${taxName} (${taxRate}%):`, pst);
+                    }
+                }
+                
+                page.drawLine({ start: { x: 380, y: yPos+10 }, end: { x: width - 60, y: yPos+10 }, thickness: 1, color: rgb(0, 0, 0) });
+                yPos -= 5;
+                drawTotalLine('TOPLAM:', grandTotal, true);
+                
+                yPos = 120;
+                page.drawText('Notlar ve Ödeme Talimatları:', { x: 50, y: yPos, font: customBoldFont, size: 10 });
+                yPos -= 15;
+                (invoiceData.paymentInstructions + '\n' + invoiceData.notes).split('\n').forEach(line => {
+                    page.drawText(line, { x: 50, y: yPos, font: customFont, size: 9 });
+                    yPos -= 12;
+                });
+                
+                page.drawText(`GST/HST No: ${invoiceData.gstNumber}`, { x: 50, y: 30, font: customFont, size: 9, color: rgb(0.5, 0.5, 0.5) });
+                
+                const pdfBytes = await pdfDoc.save();
+                const blob = new Blob([pdfBytes], { type: 'application/pdf' });
+                const link = document.createElement('a');
+                link.href = URL.createObjectURL(blob);
+                link.download = `fatura-${invoiceData.number}.pdf`;
+                document.body.appendChild(link);
+                link.click();
+                link.remove();
+                URL.revokeObjectURL(link.href);
+                
+                showNotification('Fatura başarıyla oluşturuldu ve indiriliyor!', false);
+            } catch (error) {
+                console.error('PDF oluşturma hatası:', error);
+                showNotification(`PDF hatası: ${error.message}`, true);
+            } finally {
+                generateButton.disabled = false;
+            }
+        }
+        
+        function saveDraft() {
+            const invoiceData = {
+                invoiceNumber: document.getElementById('invoiceNumber').value, invoiceDate: document.getElementById('invoiceDate').value, dueDate: document.getElementById('dueDate').value,
+                businessName: document.getElementById('businessName').value, businessAddress: document.getElementById('businessAddress').value,
+                customerName: document.getElementById('customerName').value, customerAddress: document.getElementById('customerAddress').value,
+                province: document.getElementById('province').value, gstNumber: document.getElementById('gstNumber').value,
+                currency: document.getElementById('currency').value, paymentTerms: document.getElementById('paymentTerms').value,
+                paymentInstructions: document.getElementById('paymentInstructions').value, notes: document.getElementById('notes').value,
+                items: Array.from(document.querySelectorAll('.item')).map(item => ({
+                    description: item.querySelector('.item-desc').value,
+                    quantity: item.querySelector('.item-qty').value,
+                    price: item.querySelector('.item-price').value
+                }))
+            };
+            const dataStr = JSON.stringify(invoiceData, null, 2);
+            const blob = new Blob([dataStr], { type: 'application/json' });
+            const link = document.createElement('a');
+            link.href = URL.createObjectURL(blob);
+            link.download = `fatura-${invoiceData.invoiceNumber}-taslak.json`;
+            link.click();
+            URL.revokeObjectURL(link.href);
+            showNotification('Taslak başarıyla kaydedildi!', false);
+        }
+        
+        function showNotification(message, isError = false) {
+            const notification = document.getElementById('notification');
+            notification.querySelector('span').textContent = message;
+            notification.style.backgroundColor = isError ? 'var(--secondary)' : 'var(--success)';
+            notification.classList.add('show');
+            setTimeout(() => notification.classList.remove('show'), 4000);
+        }
+    </script>
+</body>
+</html>
